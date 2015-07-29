@@ -1,0 +1,4 @@
+beautifulhue == 0.1.2
+fiveoneone == 0.2
+humanfriendly == 1.33
+pyyaml == 3.11
