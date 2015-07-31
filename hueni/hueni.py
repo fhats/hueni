@@ -12,42 +12,13 @@ from fiveoneone.stop import Stop
 from humanfriendly import parse_timespan
 import yaml
 
+from hueni.hue_manager import HueManager
+
 
 HUESERNAME = "hueni-test"
 CORE_ATTRS = ('xy', 'on', 'bri')
 
 natural_light_state = {}
-
-
-def get_bridge(options):
-    def create_config():
-        created = False
-        print 'Press the button on the Hue bridge'
-        while not created:
-            resource = {'user':{'devicetype': HUESERNAME, 'name': HUESERNAME}}
-            response = bridge.config.create(resource)['resource']
-            if 'error' in response[0]:
-                if response[0]['error']['type'] != 101:
-                    print 'Unhandled error creating configuration on the Hue'
-                    sys.exit(response)
-            else:
-                created = True
-
-    probe_bridge = lambda: bridge.config.get(dict(which="system"))['resource']
-
-    bridge_device = dict(ip=options.bridge)
-    bridge_user = dict(name=HUESERNAME)
-    bridge = Bridge(device=bridge_device, user=bridge_user)
-
-    probe_response = probe_bridge()
-    if 'lights' in probe_response:
-        print "Connected to bridge"
-    else:
-        if probe_response[0]['error']['type'] == 1:
-            create_config()
-            bridge = get_bridge(options)
-
-    return bridge
 
 
 def collect_options():
@@ -114,10 +85,6 @@ def load_token(token_file):
         return f.read().strip()
 
 
-def list_lights(bridge):
-    return bridge.light.get(dict(which="all"))
-
-
 def list_routes(muni_token):
     agencies = Agency.agencies(muni_token)
     for agency in agencies:
@@ -125,15 +92,6 @@ def list_routes(muni_token):
             # Only support SF-MUNI for right now
             if route.agency == "SF-MUNI":
                 yield route
-
-
-def store_light_state(bridge, *light_ids):
-    if not light_ids:
-        lights = bridge.light.get(dict(which='all'))['resource']
-
-    for light in lights:
-        desired = dict((x,y) for x,y in light['state'].iteritems() if x in CORE_ATTRS)
-        natural_light_state[light['id']] = desired
 
 
 def preprocess_config(muni_token, config):
@@ -156,41 +114,6 @@ def process_departures(departure, bridge, route_config):
             if time <= int(rule['start']) and time > int(rule['end']):
                 triggered_rules.append(rule)
     return triggered_rules
-
-
-def trigger_lights(bridge, lights):
-    for light_id, light_settings in lights.iteritems():
-        update_req = {
-            "which": light_id,
-            "data": {
-                "state": light_settings
-            }
-        }
-        update_req['data']['state']['on'] = True
-        if 'transitiontime' not in update_req['data']['state']:
-            update_req['data']['state']['transitiontime'] = 4
-        print "Setting light %s to %s" % (light_id, light_settings)
-        bridge.light.update(update_req)
-
-
-def reset_light(bridge, light_id):
-    natural_state = natural_light_state[light_id]
-
-    # First, figure out if we can skip this request
-    current_state = bridge.light.get(dict(which=light_id))['resource']['state']
-    if all([current_state[x] == natural_state[x] for x in CORE_ATTRS]):
-        return
-
-    update_req = {
-        "which": light_id,
-        "data": {
-            "state": natural_light_state[light_id]
-        }
-    }
-    if 'transitiontime' not in update_req['data']['state']:
-        update_req['data']['state']['transitiontime'] = 1
-    print "Resetting light %s to %s" % (light_id, natural_light_state[light_id])
-    bridge.light.update(update_req)
 
 
 def colate_lights(triggered_rules):
