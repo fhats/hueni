@@ -12,13 +12,10 @@ from fiveoneone.stop import Stop
 from humanfriendly import parse_timespan
 import yaml
 
-from hueni.hue_manager import HueManager
+from hue_manager import HueManager
 
 
-HUESERNAME = "hueni-test"
-CORE_ATTRS = ('xy', 'on', 'bri')
-
-natural_light_state = {}
+USED_AGENCIES = ("SF-MUNI",)
 
 
 def collect_options():
@@ -90,23 +87,15 @@ def list_routes(muni_token):
     for agency in agencies:
         for route in agency.routes():
             # Only support SF-MUNI for right now
-            if route.agency == "SF-MUNI":
+            if route.agency == USED_AGENCIES:
                 yield route
 
 
-def preprocess_config(muni_token, config):
-    known_routes = {}
-    for route in list_routes(muni_token):
-        known_routes[str(route.code)] = route
-
-    for stop_id, stop_config in config['stops'].iteritems():
-        for route_id, route_config in stop_config.iteritems():
-            config['stops'][stop_id][route_id]['route'] = known_routes[str(route_id)]
-
-    return config
-
-
-def process_departures(departure, bridge, route_config):
+def process_departures(departure, route_config):
+    """Given a Departure from fiveoneone, which has a set of times, and a
+    route configuration containing rules about when to trigger a light, return
+    a set of rules that are triggered.
+    """
     triggered_rules = []
     for time in departure.times:
         time = int(time)
@@ -174,8 +163,6 @@ if __name__ == "__main__":
     options, config, token = collect_options()
 
     bridge = get_bridge(options)
-
-    config = preprocess_config(token, config)
 
     store_light_state(bridge)
 
