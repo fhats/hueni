@@ -1,4 +1,5 @@
 beautifulhue == 0.1.2
-fiveoneone == 0.2
+# fiveoneone == 0.2
+git+git://github.com/fhats/511-transit.git@modify_requirements_dedupe
 humanfriendly == 1.33
 pyyaml == 3.11
