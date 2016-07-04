@@ -238,27 +238,28 @@ def colate_lights(triggered_rules):
 
 
 def daemon_loop(config, muni_token, bridge):
+    triggered_rules = []
+
     for stop_id, stop_config in config['stops'].iteritems():
         stop = Stop(muni_token, "", stop_id)
 
-        triggered_rules = []
         for route_id, route_config in stop_config.iteritems():
             departure = stop.next_departures(route_id, route_config['direction'])
             print "%s - %s" % (route_id, departure.times)
             departure_rules_triggered = process_departures(departure, bridge, route_config)
             triggered_rules.extend(departure_rules_triggered)
 
-        desired_light_states = colate_lights(triggered_rules)
+    desired_light_states = colate_lights(triggered_rules)
 
-        trigger_lights(bridge, desired_light_states)
+    trigger_lights(bridge, desired_light_states)
 
-        triggered_lights = set()
-        for rule in triggered_rules:
-            triggered_lights.update(rule['lights'].keys())
+    triggered_lights = set()
+    for rule in triggered_rules:
+        triggered_lights.update(rule['lights'].keys())
 
-        for light_id in natural_light_state.iterkeys():
-            if light_id not in triggered_lights:
-                reset_light(bridge, light_id)
+    for light_id in natural_light_state.iterkeys():
+        if light_id not in triggered_lights:
+            reset_light(bridge, light_id)
 
     return False
 
