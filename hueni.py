@@ -123,7 +123,7 @@ def list_routes(muni_token):
     for agency in agencies:
         for route in agency.routes():
             # Only support SF-MUNI for right now
-            if route.agency == "SF-MUNI":
+            if route.agency == "SFMTA":
                 yield route
 
 
