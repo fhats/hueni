@@ -58,6 +58,7 @@ def collect_options():
     parser.add_option("-t", "--token", help="A file containing a 511 API token")
     parser.add_option("--list-lights", action="store_true", help="Dump all the known lights")
     parser.add_option("--list-routes", action="store_true", help="Dump all monitored routes")
+    parser.add_option("--list-stops",  default=False, help="Dump stops along a specified route")
     options, args = parser.parse_args()
 
     if options.list_lights:
@@ -82,6 +83,18 @@ def collect_options():
         print "Code\tName"
         for route in list_routes(token):
             print "%s\t%s" % (route.code, route.name)
+        sys.exit(0)
+
+    if options.list_stops:
+        if not options.token:
+            parser.error("You must supply a 511 API token!")
+
+        token = load_config(options.token)
+
+        print "Direction\tCode\tStop"
+        for direction, stop in list_stops(token, options.list_stops):
+            print "%s\t%s\t%s" % (direction.ljust(9), stop.code, stop.name)
+
         sys.exit(0)
 
     if not args or len(args) > 1:
@@ -125,6 +138,14 @@ def list_routes(muni_token):
             # Only support SF-MUNI for right now
             if route.agency == "SFMTA":
                 yield route
+
+
+def list_stops(muni_token, route_name):
+    for route in list_routes(muni_token):
+        if str(route.code) == route_name:
+            for direction in (route.INBOUND, route.OUTBOUND):
+                for stop in route.stops(direction):
+                    yield (direction, stop)
 
 
 def store_light_state(bridge, *light_ids):
